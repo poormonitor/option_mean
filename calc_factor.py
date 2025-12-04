@@ -1,5 +1,4 @@
 import polars as pl
-import polars_ols as pls
 import matplotlib.pyplot as plt
 from datetime import datetime
 
