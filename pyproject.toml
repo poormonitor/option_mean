@@ -7,6 +7,7 @@ requires-python = ">=3.12"
 dependencies = [
     "joblib>=1.5.2",
     "polars>=1.35.2",
+    "scipy>=1.16.3",
     "seaborn>=0.13.2",
     "tqdm>=4.67.1",
 ]
