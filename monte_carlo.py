@@ -9,9 +9,10 @@ K = 2.60  # Strike Price
 T_days = 90  # Total duration in days
 T = T_days / 365.0
 r = 0.02  # Risk-free rate
+sigma_target = 0.10
 sigma_base = 0.30  # Long-term mean volatility
 theta = 50.0  # Mean reversion speed (Increased for stronger reversion)
-sigma_vol = 0.50  # Volatility of volatility (Increased for wider spread)
+sigma_vol = 0.60  # Volatility of volatility (Increased for wider spread)
 N_SIMULATIONS = 1000
 N_STEPS = 90  # 1 step per day
 
@@ -52,9 +53,8 @@ def simulate_path(seed):
 
         # GBM for Price using the *current* volatility for the step
         # dS = r * S * dt + sigma * S * dW
-        sigma_t = sigmas[t]
         prices[t + 1] = prices[t] * np.exp(
-            (r - 0.5 * sigma_t**2) * dt + sigma_t * np.sqrt(dt) * Z_S[t]
+            (r - 0.5 * sigma_target**2) * dt + sigma_target * np.sqrt(dt) * Z_S[t]
         )
 
         # Option Price
@@ -84,19 +84,19 @@ time_points = np.arange(N_STEPS + 1)
 plt.figure(figsize=(18, 6))
 
 plt.subplot(1, 3, 1)
-plt.plot(time_points, all_prices.T, alpha=0.05, color="blue")
+plt.plot(time_points, all_prices.T, alpha=0.05, color="#708946")
 plt.title("Underlying Price Paths (GBM)")
 plt.ylabel("Price")
 plt.grid(True, alpha=0.3)
 
 plt.subplot(1, 3, 2)
-plt.plot(time_points, all_option_prices.T, alpha=0.05, color="green")
+plt.plot(time_points, all_option_prices.T, alpha=0.05, color="#326DC6")
 plt.title("Option Price Paths")
 plt.ylabel("Price")
 plt.grid(True, alpha=0.3)
 
 plt.subplot(1, 3, 3)
-plt.plot(time_points, all_sigmas.T, alpha=0.05, color="red")
+plt.plot(time_points, all_sigmas.T, alpha=0.05, color="#BE5A25")
 plt.title("Implied Volatility Paths (OU Process)")
 plt.ylabel("Volatility")
 plt.xlabel("Days")
@@ -111,7 +111,7 @@ day_base_idx = 30
 day_obs_idx = 40  # 30 + 15
 
 iv_ranks = []
-iv_changes = []
+price_changes = []
 
 print("Processing results...")
 for i in range(N_SIMULATIONS):
@@ -127,30 +127,30 @@ for i in range(N_SIMULATIONS):
     iv_ranks.append(rank)
 
     # Calculate IV Change Rate 15 days later
-    iv_base = sigmas[day_base_idx]
-    iv_obs = sigmas[day_obs_idx]
+    price_base = option_prices[day_base_idx]
+    price_obs = option_prices[day_obs_idx]
 
-    if iv_base < 1e-6:
+    if price_base < 1e-6:
         change = 0.0
     else:
-        # change = (iv_obs - iv_base) / iv_base
-        change = np.log(iv_obs / iv_base)
-    iv_changes.append(change)
+        #change = (price_obs - price_base) / price_base
+        change = np.log(price_obs / price_base)
+    price_changes.append(change)
 
 # Plotting Scatter
 plt.figure(figsize=(10, 8))
-plt.scatter(iv_ranks, iv_changes, alpha=0.5, c="purple", edgecolors="w", s=50)
+plt.scatter(iv_ranks, price_changes, alpha=0.5, c="purple", edgecolors="w", s=50)
 plt.title(
-    f"IV Rank (Day 30) vs IV Change Rate (Next 10 Days)\nSimulations: {N_SIMULATIONS}, Mean Reversion Theta: {theta}"
+    f"IV Rank (Day 30) vs Option Price Change Rate (Next 10 Days)\nSimulations: {N_SIMULATIONS}, Mean Reversion Theta: {theta}"
 )
 plt.xlabel("Implied Volatility Percentile Rank (Day 0-30)")
-plt.ylabel("IV Change Rate (Day 30 -> Day 40)")
+plt.ylabel("Option Price Change Rate (Day 30 -> Day 40)")
 plt.axhline(0, color="black", linestyle="--", alpha=0.7)
 plt.axvline(0.5, color="black", linestyle="--", alpha=0.7)
 plt.grid(True, alpha=0.3)
 
 # Add trend line
-z = np.polyfit(iv_ranks, iv_changes, 1)
+z = np.polyfit(iv_ranks, price_changes, 1)
 p = np.poly1d(z)
 plt.plot(
     iv_ranks, p(iv_ranks), "r--", alpha=0.8, label=f"Trend: y={z[0]:.4f}x+{z[1]:.4f}"
